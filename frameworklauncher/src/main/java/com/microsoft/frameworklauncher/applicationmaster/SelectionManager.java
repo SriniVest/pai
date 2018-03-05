@@ -129,6 +129,7 @@ public class SelectionManager { // THREAD SAFE
         Node node = allNodes.get(filteredNodes.get(i - 1));
         ResourceDescriptor availableResource = node.getAvailableResource();
         if (skipLocalTriedResource && localTriedResource.containsKey(node.getHost())) {
+          LOGGER.logDebug("Skip local tried resources: [%s] on Node : [%s]", localTriedResource.get(node.getHost()), node.getHost());
           ResourceDescriptor.subtractFrom(availableResource, localTriedResource.get(node.getHost()));
         }
         if (!ResourceDescriptor.fitsIn(requestResource, availableResource)) {
