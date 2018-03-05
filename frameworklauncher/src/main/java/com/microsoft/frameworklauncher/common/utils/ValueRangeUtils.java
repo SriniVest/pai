@@ -283,10 +283,10 @@ public class ValueRangeUtils {
       return false;
     }
     for(int i = 0; i < leftRange.size(); i++) {
-      if(leftRange.get(i).getBegin() != rightRange.get(i).getBegin()) {
+      if(leftRange.get(i).getBegin().intValue() != rightRange.get(i).getBegin().intValue()) {
         return false;
       }
-      if(leftRange.get(i).getEnd() != rightRange.get(i).getEnd()) {
+      if(leftRange.get(i).getEnd().intValue() != rightRange.get(i).getEnd().intValue()) {
         return false;
       }
     }
