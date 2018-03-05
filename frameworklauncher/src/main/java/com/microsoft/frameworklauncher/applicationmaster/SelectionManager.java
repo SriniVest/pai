@@ -176,6 +176,9 @@ public class SelectionManager { // THREAD SAFE
   }
 
   public synchronized SelectionResult select(ResourceDescriptor requestResource, String taskRoleName) throws NotAvailableException {
+
+    LOGGER.logInfo(
+        "select: TaskRole: [%s] Resource: [%s]", taskRoleName, requestResource);
     String requestNodeLabel = am.getRequestManager().getTaskPlatParams().get(taskRoleName).getTaskNodeLabel();
     String requestNodeGpuType = am.getRequestManager().getTaskPlatParams().get(taskRoleName).getTaskNodeGpuType();
     int pendingTaskNumber = am.getStatusManager().getUnAllocatedTaskCount(taskRoleName);

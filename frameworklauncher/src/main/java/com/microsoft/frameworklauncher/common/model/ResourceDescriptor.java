@@ -225,7 +225,6 @@ public class ResourceDescriptor implements Serializable {
           ValueRange range = new ValueRange();
           range.setBegin((int) getBegin.invoke(hadoopRange));
           range.setEnd((int) getEnd.invoke(hadoopRange));
-          LOGGER.logDebug("Get range: " + range);
           rangeList.add(range);
         }
         rd.setPortRanges(rangeList);
