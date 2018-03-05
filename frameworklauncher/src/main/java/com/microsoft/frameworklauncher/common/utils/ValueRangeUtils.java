@@ -319,4 +319,14 @@ public class ValueRangeUtils {
     }
     return -1;
   }
+
+  public static String toString(List<ValueRange> valueList) {
+    StringBuilder portString = new StringBuilder();
+    if (valueList != null) {
+      for (ValueRange range : valueList) {
+        portString.append(range);
+      }
+    }
+    return portString.toString();
+  }
 }

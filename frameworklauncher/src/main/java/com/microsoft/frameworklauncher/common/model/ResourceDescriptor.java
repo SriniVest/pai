@@ -341,18 +341,12 @@ public class ResourceDescriptor implements Serializable {
 
   @Override
   public String toString() {
-    StringBuilder portString = new StringBuilder();
-    if (portRanges != null) {
-      for (ValueRange range : portRanges) {
-        portString.append(range);
-      }
-    }
     return String.format("[MemoryMB: [%s]", getMemoryMB()) + " " +
         String.format("CpuNumber: [%s]", getCpuNumber()) + " " +
         String.format("GpuNumber: [%s]", getGpuNumber()) + " " +
         String.format("GpuAttribute: [%s]", CommonExts.toStringWithBits(getGpuAttribute())) + " " +
         String.format("PortNumber: [%s]", getPortNumber()) +
-        String.format("portRanges: [%s]", portString);
+        String.format("portRanges: [%s]", ValueRangeUtils.toString(portRanges));
   }
 
 }

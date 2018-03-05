@@ -188,8 +188,8 @@ public class SelectionManager { // THREAD SAFE
       int pendingTaskNumber, Boolean useTheSamePorts, List<ValueRange> allocatedPorts) throws NotAvailableException {
 
     LOGGER.logInfo(
-        "select: Request: Resource: [%s], NodeLabel: [%s], NodeGpuType: [%s], TaskNumber: [%d]",
-        requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber);
+        "select: Request: Resource: [%s], NodeLabel: [%s], NodeGpuType: [%s], TaskNumber: [%d], UseTheSamePorts: [%s], AllocatedPorts: [%s]",
+        requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, useTheSamePorts, ValueRangeUtils.toString(allocatedPorts));
 
     randomizeNodes();
     filterNodesByNodeLabel(requestNodeLabel);
@@ -202,6 +202,8 @@ public class SelectionManager { // THREAD SAFE
     ResourceDescriptor optimizedRequestResource = YamlUtils.deepCopy(requestResource, ResourceDescriptor.class);
     if (useTheSamePorts) {
       if (ValueRangeUtils.getValueNumber(allocatedPorts) > 0) {
+        LOGGER.logInfo(
+            "select: re-use pre-allocated ports: [%s]", ValueRangeUtils.toString(allocatedPorts));
         optimizedRequestResource.setPortRanges(allocatedPorts);
       }
     }
