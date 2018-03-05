@@ -62,7 +62,7 @@ public class LauncherConfiguration implements Serializable {
   private Integer amContainerBasePort = 2000;
   private Integer amSearchNodeBufferFactor = 2;
 
-  private Boolean amSkipLocalTriedResource = true;
+  private Boolean amSkipLocalTriedResource = false;
   private Boolean amAllowNoneGpuJobOnGpuNode = true;
 
   // ApplicationMaster Setup

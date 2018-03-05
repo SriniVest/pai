@@ -12,9 +12,18 @@
         "resource": {
           "cpuNumber": 18,
           "memoryMB": 19,
-          "portRanges": [],
           "diskType": 0,
-          "diskMB": 0
+          "diskMB": 0,
+          "portDefinitions": {
+            "http": {
+              "start": 0,
+              "count": 4
+            },
+            "ssh": {
+              "start": 0,
+              "count": 10
+            }
+          }
         }
       }
     }

@@ -30,7 +30,6 @@ import com.microsoft.frameworklauncher.common.utils.YamlUtils;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import com.microsoft.frameworklauncher.common.model.*;
-import org.apache.htrace.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import java.util.*;
 
@@ -51,7 +50,6 @@ public class SelectionManager { // THREAD SAFE
   private final LinkedHashMap<String, Node> allNodes = new LinkedHashMap<>();
   private final LinkedHashMap<String, ResourceDescriptor> localTriedResource = new LinkedHashMap<>();
   private final LinkedHashMap<String, List<ValueRange>> requestedPortsCache = new LinkedHashMap<>();
-  private final LinkedHashMap<String, Integer> portsCacheVisitCount = new LinkedHashMap<>();
 
   private final List<String> filteredNodes = new ArrayList<String>();
 

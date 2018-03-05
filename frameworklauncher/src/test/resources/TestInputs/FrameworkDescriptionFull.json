@@ -59,16 +59,6 @@
         "resource": {
           "cpuNumber": 28,
           "memoryMB": 29,
-          "portRanges": [
-            {
-              "begin": 110,
-              "end": 113
-            },
-            {
-              "begin": 120,
-              "end": 123
-            }
-          ],
           "diskType": 0,
           "diskMB": 31
         }

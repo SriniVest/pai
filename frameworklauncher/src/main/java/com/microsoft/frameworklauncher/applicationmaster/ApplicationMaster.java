@@ -328,7 +328,6 @@ public class ApplicationMaster extends AbstractService {
     String requestNodeLabel = requestManager.getTaskPlatParams().get(taskRoleName).getTaskNodeLabel();
 
     ResourceDescriptor requestResource = requestManager.getTaskResources().get(taskRoleName);
-
     ResourceDescriptor maxResource = conf.getMaxResource();
 
     if (!ResourceDescriptor.fitsIn(requestResource, maxResource)) {
@@ -544,7 +543,7 @@ public class ApplicationMaster extends AbstractService {
       if (ValueRangeUtils.getValueNumber(allocatedPorts) > 0) {
         if (!ValueRangeUtils.isEqualRangeList(containerPorts, allocatedPorts)) {
           LOGGER.logWarning(
-              "[%s]: Container ports are not consistent with previous successfully allocated tasks",
+              "[%s]: Container ports are not consistent with previous allocated ports",
               containerId);
           return false;
         }
