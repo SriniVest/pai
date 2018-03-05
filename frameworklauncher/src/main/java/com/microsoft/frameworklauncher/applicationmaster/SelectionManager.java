@@ -30,6 +30,7 @@ import com.microsoft.frameworklauncher.common.utils.YamlUtils;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import com.microsoft.frameworklauncher.common.model.*;
+import org.apache.htrace.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import java.util.*;
 
@@ -49,6 +50,9 @@ public class SelectionManager { // THREAD SAFE
   private final ApplicationMaster am;
   private final LinkedHashMap<String, Node> allNodes = new LinkedHashMap<>();
   private final LinkedHashMap<String, ResourceDescriptor> localTriedResource = new LinkedHashMap<>();
+  private final LinkedHashMap<String, List<ValueRange>> requestedPortsCache = new LinkedHashMap<>();
+  private final LinkedHashMap<String, Integer> portsCacheVisitCount = new LinkedHashMap<>();
+
   private final List<String> filteredNodes = new ArrayList<String>();
 
   public SelectionManager(ApplicationMaster am) {
@@ -175,22 +179,34 @@ public class SelectionManager { // THREAD SAFE
     String requestNodeLabel = am.getRequestManager().getTaskPlatParams().get(taskRoleName).getTaskNodeLabel();
     String requestNodeGpuType = am.getRequestManager().getTaskPlatParams().get(taskRoleName).getTaskNodeGpuType();
     int pendingTaskNumber = am.getStatusManager().getUnAllocatedTaskCount(taskRoleName);
-    List<ValueRange> allocatedPorts = am.getStatusManager().getAllocatedTaskPorts(taskRoleName);
-    Boolean useTheSamePorts = am.getRequestManager().getTaskRoles().get(taskRoleName).getUseTheSamePorts();
-    return select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, useTheSamePorts, allocatedPorts);
+    List<ValueRange> reUsePorts = null;
+
+    // Prefer to use previous successfully allocated ports. if no successfully ports, try to re-use the "Requesting" ports.
+    if (am.getRequestManager().getTaskRoles().get(taskRoleName).getUseTheSamePorts()) {
+      reUsePorts = am.getStatusManager().getAllocatedTaskPorts(taskRoleName);
+      if (ValueRangeUtils.getValueNumber(reUsePorts) <= 0 && requestedPortsCache.containsKey(taskRoleName)) {
+        reUsePorts = requestedPortsCache.get(taskRoleName);
+        // the cache only guide the next task to use previous requesting port.
+        requestedPortsCache.remove(taskRoleName);
+      }
+    }
+    SelectionResult result = select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, reUsePorts);
+    if (!requestedPortsCache.containsKey(taskRoleName))
+      requestedPortsCache.put(taskRoleName, result.getOptimizedResource().getPortRanges());
+    return result;
   }
 
   @VisibleForTesting
   public synchronized SelectionResult select(ResourceDescriptor requestResource, String requestNodeLabel, String requestNodeGpuType, int pendingTaskNumber) throws NotAvailableException {
-    return select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, false, null);
+    return select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, null);
   }
 
   public synchronized SelectionResult select(ResourceDescriptor requestResource, String requestNodeLabel, String requestNodeGpuType,
-      int pendingTaskNumber, Boolean useTheSamePorts, List<ValueRange> allocatedPorts) throws NotAvailableException {
+      int pendingTaskNumber, List<ValueRange> reUsePorts) throws NotAvailableException {
 
     LOGGER.logInfo(
-        "select: Request: Resource: [%s], NodeLabel: [%s], NodeGpuType: [%s], TaskNumber: [%d], UseTheSamePorts: [%s], AllocatedPorts: [%s]",
-        requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, useTheSamePorts, ValueRangeUtils.toString(allocatedPorts));
+        "select: Request: Resource: [%s], NodeLabel: [%s], NodeGpuType: [%s], TaskNumber: [%d], ReUsePorts: [%s]",
+        requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, ValueRangeUtils.toString(reUsePorts));
 
     randomizeNodes();
     filterNodesByNodeLabel(requestNodeLabel);
@@ -201,12 +217,10 @@ public class SelectionManager { // THREAD SAFE
     }
 
     ResourceDescriptor optimizedRequestResource = YamlUtils.deepCopy(requestResource, ResourceDescriptor.class);
-    if (useTheSamePorts) {
-      if (ValueRangeUtils.getValueNumber(allocatedPorts) > 0) {
-        LOGGER.logInfo(
-            "select: re-use pre-allocated ports: [%s]", ValueRangeUtils.toString(allocatedPorts));
-        optimizedRequestResource.setPortRanges(allocatedPorts);
-      }
+    if (ValueRangeUtils.getValueNumber(reUsePorts) > 0) {
+      LOGGER.logInfo(
+          "select: re-use pre-allocated ports: [%s]", ValueRangeUtils.toString(reUsePorts));
+      optimizedRequestResource.setPortRanges(reUsePorts);
     }
 
     filterNodesByResource(optimizedRequestResource, am.getConfiguration().getLauncherConfig().getAmSkipLocalTriedResource());
