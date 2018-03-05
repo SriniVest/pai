@@ -541,9 +541,8 @@ public class ApplicationMaster extends AbstractService {
     LOGGER.logDebug(" Test Container, TaskRoleName: [%s] UseTheSamePorts: [%s], previous allocated ports: [%s], current allocated ports: [%s]",
         taskRoleName, useTheSamePorts, allocatedPorts, containerPorts);
     if (requestManager != null && useTheSamePorts) {
-
       if (ValueRangeUtils.getValueNumber(allocatedPorts) > 0) {
-        if (ValueRangeUtils.isEqualRangeList(containerPorts, allocatedPorts)) {
+        if (!ValueRangeUtils.isEqualRangeList(containerPorts, allocatedPorts)) {
           LOGGER.logWarning(
               "[%s]: Container ports are not consistent with previous successfully allocated tasks",
               containerId);
