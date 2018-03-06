@@ -346,7 +346,7 @@ public class ApplicationMaster extends AbstractService {
       return HadoopUtils.toContainerRequest(optimizedRequestResource, requestPriority, requestNodeLabel, null);
     }
 
-    //Random pick a host in the result set
+    //Random pick a host from the result set
     int random = new Random().nextInt(selectionResult.getSelectedNodeHosts().size());
     String candidateNode = selectionResult.getSelectedNodeHosts().get(random);
     optimizedRequestResource.setGpuAttribute(selectionResult.getGpuAttribute(candidateNode));
@@ -529,8 +529,7 @@ public class ApplicationMaster extends AbstractService {
       return false;
     }
 
-    // To keep all tasks have the same port in a task role.
-    // Verify if the new allocated container's ports are the same with the task already allocated.
+    // To keep all tasks have the same ports in a task role.
     // Will reject this container if the ports are not the same.
     String taskRoleName = taskStatus.getTaskRoleName();
     List<ValueRange> allocatedPorts = statusManager.getAllocatedTaskPorts(taskRoleName);

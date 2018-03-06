@@ -19,7 +19,7 @@
 
 cd /
 
-wget  https://issues.apache.org/jira/secure/attachment/12912996/hadoop-2.7.2-gpu-port.patch
+wget  https://issues.apache.org/jira/secure/attachment/12913143/hadoop-2.7.2-gpu-port.patch
 git clone https://github.com/apache/hadoop.git
 
 cd hadoop
