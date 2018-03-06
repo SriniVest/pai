@@ -192,7 +192,7 @@ public class SelectionManager { // THREAD SAFE
       }
     }
     SelectionResult result = select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, reUsePorts);
-    if (!requestedPortsCache.containsKey(taskRoleName))
+    if (!requestedPortsCache.containsKey(taskRoleName) && pendingTaskNumber > 1)
       requestedPortsCache.put(taskRoleName, result.getOptimizedResource().getPortRanges());
     return result;
   }
