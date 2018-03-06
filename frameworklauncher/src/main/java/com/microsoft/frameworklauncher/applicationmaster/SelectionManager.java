@@ -49,6 +49,8 @@ public class SelectionManager { // THREAD SAFE
   private final ApplicationMaster am;
   private final LinkedHashMap<String, Node> allNodes = new LinkedHashMap<>();
   private final LinkedHashMap<String, ResourceDescriptor> localTriedResource = new LinkedHashMap<>();
+  private final LinkedHashMap<String, List<ValueRange>> requestedPortsCache = new LinkedHashMap<>();
+
   private final List<String> filteredNodes = new ArrayList<String>();
 
   public SelectionManager(ApplicationMaster am) {
@@ -109,14 +111,14 @@ public class SelectionManager { // THREAD SAFE
     }
   }
 
-  private void filterNodesForNonGpuTask(ResourceDescriptor requestResource) {
-    if (requestResource != null && requestResource.getGpuNumber() == 0) {
+  private void filterNodesForNonGpuJob(ResourceDescriptor jobTotalRequestResource) {
+    if (jobTotalRequestResource != null && jobTotalRequestResource.getGpuNumber() == 0) {
       for (int i = filteredNodes.size(); i > 0; i--) {
         Node node = allNodes.get(filteredNodes.get(i - 1));
         ResourceDescriptor totalResource = node.getTotalResource();
         if (totalResource.getGpuNumber() > 0) {
-          LOGGER.logDebug("skip nodes with Gpu resource for non-gpu job: Node [%s], Request Resource: [%s], Total Resource: [%s]",
-              node.getHost(), requestResource, totalResource);
+          LOGGER.logDebug("skip nodes with Gpu resource for non-gpu job: Node [%s], Job request resource: [%s], Node total tesource: [%s]",
+              node.getHost(), jobTotalRequestResource, totalResource);
           filteredNodes.remove(i - 1);
         }
       }
@@ -129,6 +131,7 @@ public class SelectionManager { // THREAD SAFE
         Node node = allNodes.get(filteredNodes.get(i - 1));
         ResourceDescriptor availableResource = node.getAvailableResource();
         if (skipLocalTriedResource && localTriedResource.containsKey(node.getHost())) {
+          LOGGER.logDebug("Skip local tried resources: [%s] on Node : [%s]", localTriedResource.get(node.getHost()), node.getHost());
           ResourceDescriptor.subtractFrom(availableResource, localTriedResource.get(node.getHost()));
         }
         if (!ResourceDescriptor.fitsIn(requestResource, availableResource)) {
@@ -171,44 +174,60 @@ public class SelectionManager { // THREAD SAFE
   }
 
   public synchronized SelectionResult select(ResourceDescriptor requestResource, String taskRoleName) throws NotAvailableException {
+
+    LOGGER.logInfo(
+        "select: TaskRole: [%s] Resource: [%s]", taskRoleName, requestResource);
     String requestNodeLabel = am.getRequestManager().getTaskPlatParams().get(taskRoleName).getTaskNodeLabel();
     String requestNodeGpuType = am.getRequestManager().getTaskPlatParams().get(taskRoleName).getTaskNodeGpuType();
     int pendingTaskNumber = am.getStatusManager().getUnAllocatedTaskCount(taskRoleName);
-    List<ValueRange> allocatedPorts = am.getStatusManager().getAllocatedTaskPorts(taskRoleName);
-    Boolean useTheSamePorts = am.getRequestManager().getTaskRoles().get(taskRoleName).getUseTheSamePorts();
-    return select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, useTheSamePorts, allocatedPorts);
+    List<ValueRange> reUsePorts = null;
+
+    // Prefer to use previous successfully allocated ports. if no successfully ports, try to re-use the "Requesting" ports.
+    if (am.getRequestManager().getTaskRoles().get(taskRoleName).getUseTheSamePorts()) {
+      reUsePorts = am.getStatusManager().getAllocatedTaskPorts(taskRoleName);
+      if (ValueRangeUtils.getValueNumber(reUsePorts) <= 0 && requestedPortsCache.containsKey(taskRoleName)) {
+        reUsePorts = requestedPortsCache.get(taskRoleName);
+        // the cache only guide the next task to use previous requesting port.
+        requestedPortsCache.remove(taskRoleName);
+      }
+    }
+    SelectionResult result = select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, reUsePorts);
+    if (!requestedPortsCache.containsKey(taskRoleName) && pendingTaskNumber > 1)
+      requestedPortsCache.put(taskRoleName, result.getOptimizedResource().getPortRanges());
+    return result;
   }
 
   @VisibleForTesting
   public synchronized SelectionResult select(ResourceDescriptor requestResource, String requestNodeLabel, String requestNodeGpuType, int pendingTaskNumber) throws NotAvailableException {
-    return select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, false, null);
+    return select(requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, null);
   }
 
   public synchronized SelectionResult select(ResourceDescriptor requestResource, String requestNodeLabel, String requestNodeGpuType,
-      int pendingTaskNumber, Boolean useTheSamePorts, List<ValueRange> allocatedPorts) throws NotAvailableException {
+      int pendingTaskNumber, List<ValueRange> reUsePorts) throws NotAvailableException {
 
     LOGGER.logInfo(
-        "select: Request: Resource: [%s], NodeLabel: [%s], NodeGpuType: [%s], TaskNumber: [%d]",
-        requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber);
+        "select: Request: Resource: [%s], NodeLabel: [%s], NodeGpuType: [%s], TaskNumber: [%d], ReUsePorts: [%s]",
+        requestResource, requestNodeLabel, requestNodeGpuType, pendingTaskNumber, ValueRangeUtils.toString(reUsePorts));
 
     randomizeNodes();
     filterNodesByNodeLabel(requestNodeLabel);
     filterNodesByGpuType(requestNodeGpuType);
-    if(!am.getConfiguration().getLauncherConfig().getAmAllowNoneGpuJobOnGpuNode()) {
-      filterNodesForNonGpuTask(requestResource);
+    if (!am.getConfiguration().getLauncherConfig().getAmAllowNoneGpuJobOnGpuNode()) {
+      ResourceDescriptor jobTotalRequestResource = am.getRequestManager().getJobTotalCountableResources();
+      filterNodesForNonGpuJob(jobTotalRequestResource);
     }
 
     ResourceDescriptor optimizedRequestResource = YamlUtils.deepCopy(requestResource, ResourceDescriptor.class);
-    if (useTheSamePorts) {
-      if (ValueRangeUtils.getValueNumber(allocatedPorts) > 0) {
-        optimizedRequestResource.setPortRanges(allocatedPorts);
-      }
+    if (ValueRangeUtils.getValueNumber(reUsePorts) > 0) {
+      LOGGER.logInfo(
+          "select: re-use pre-allocated ports: [%s]", ValueRangeUtils.toString(reUsePorts));
+      optimizedRequestResource.setPortRanges(reUsePorts);
     }
 
     filterNodesByResource(optimizedRequestResource, am.getConfiguration().getLauncherConfig().getAmSkipLocalTriedResource());
 
     filterNodesByRackSelectionPolicy(optimizedRequestResource, pendingTaskNumber);
-    if (filteredNodes.size() < pendingTaskNumber) {
+    if (filteredNodes.size() < 1) {
       //don't have candidate nodes for this request.
       if (requestNodeGpuType != null || requestResource.getPortNumber() > 0) {
         //If gpuType or portNumber is specified, abort this request and try later.

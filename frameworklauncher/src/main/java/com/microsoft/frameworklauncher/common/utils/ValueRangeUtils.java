@@ -18,6 +18,7 @@
 package com.microsoft.frameworklauncher.common.utils;
 
 import com.microsoft.frameworklauncher.common.model.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
@@ -272,21 +273,21 @@ public class ValueRangeUtils {
     List<ValueRange> leftRange = coalesceRangeList(leftRangeList);
     List<ValueRange> rightRange = coalesceRangeList(rightRangeList);
 
-    if(leftRange == null || rightRange == null) {
-      if(leftRange == rightRange) {
+    if (leftRange == null || rightRange == null) {
+      if (leftRange == rightRange) {
         return true;
-      }else {
+      } else {
         return false;
       }
     }
-    if(leftRange.size() != rightRange.size()) {
+    if (leftRange.size() != rightRange.size()) {
       return false;
     }
-    for(int i = 0; i < leftRange.size(); i++) {
-      if(leftRange.get(i).getBegin() != rightRange.get(i).getBegin()) {
+    for (int i = 0; i < leftRange.size(); i++) {
+      if (leftRange.get(i).getBegin().intValue() != rightRange.get(i).getBegin().intValue()) {
         return false;
       }
-      if(leftRange.get(i).getEnd() != rightRange.get(i).getEnd()) {
+      if (leftRange.get(i).getEnd().intValue() != rightRange.get(i).getEnd().intValue()) {
         return false;
       }
     }
@@ -318,5 +319,15 @@ public class ValueRangeUtils {
       }
     }
     return -1;
+  }
+
+  public static String toString(List<ValueRange> valueList) {
+    StringBuilder portString = new StringBuilder();
+    if (valueList != null) {
+      for (ValueRange range : valueList) {
+        portString.append(range);
+      }
+    }
+    return portString.toString();
   }
 }

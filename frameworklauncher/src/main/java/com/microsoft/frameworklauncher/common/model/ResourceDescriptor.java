@@ -133,7 +133,7 @@ public class ResourceDescriptor implements Serializable {
     } else if (portNumber > 0 && ValueRangeUtils.getValueNumber(portRangeList) == 0) {
       this.setPortNumber(portNumber);
     } else if (portNumber > 0 && ValueRangeUtils.getValueNumber(portRangeList) > 0){
-      throw new BadRequestException("illegal portDefinitions in ResourceDescriptor, any port and specified port are now allowed coexistence");
+      throw new BadRequestException("illegal portDefinitions in ResourceDescriptor, any port and specified port are now allowed to coexistence");
     }
   }
 
@@ -225,7 +225,6 @@ public class ResourceDescriptor implements Serializable {
           ValueRange range = new ValueRange();
           range.setBegin((int) getBegin.invoke(hadoopRange));
           range.setEnd((int) getEnd.invoke(hadoopRange));
-          LOGGER.logDebug("Get range: " + range);
           rangeList.add(range);
         }
         rd.setPortRanges(rangeList);
@@ -341,17 +340,12 @@ public class ResourceDescriptor implements Serializable {
 
   @Override
   public String toString() {
-    StringBuilder portString = new StringBuilder();
-    if (portRanges != null) {
-      for (ValueRange range : portRanges) {
-        portString.append(range);
-      }
-    }
     return String.format("[MemoryMB: [%s]", getMemoryMB()) + " " +
         String.format("CpuNumber: [%s]", getCpuNumber()) + " " +
         String.format("GpuNumber: [%s]", getGpuNumber()) + " " +
         String.format("GpuAttribute: [%s]", CommonExts.toStringWithBits(getGpuAttribute())) + " " +
-        String.format("portRanges: [%s]", portString);
+        String.format("PortNumber: [%s]", getPortNumber()) +
+        String.format("portRanges: [%s]", ValueRangeUtils.toString(portRanges));
   }
 
 }

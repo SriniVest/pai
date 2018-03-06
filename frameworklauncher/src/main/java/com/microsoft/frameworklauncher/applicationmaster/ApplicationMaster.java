@@ -346,7 +346,7 @@ public class ApplicationMaster extends AbstractService {
       return HadoopUtils.toContainerRequest(optimizedRequestResource, requestPriority, requestNodeLabel, null);
     }
 
-    //Random pick a host in the result set
+    //Random pick a host from the result set
     int random = new Random().nextInt(selectionResult.getSelectedNodeHosts().size());
     String candidateNode = selectionResult.getSelectedNodeHosts().get(random);
     optimizedRequestResource.setGpuAttribute(selectionResult.getGpuAttribute(candidateNode));
@@ -529,17 +529,20 @@ public class ApplicationMaster extends AbstractService {
       return false;
     }
 
-    // To keep all tasks have the same port in a task role.
-    // Verify if the new allocated container's ports are the same with the task already allocated.
+    // To keep all tasks have the same ports in a task role.
     // Will reject this container if the ports are not the same.
     String taskRoleName = taskStatus.getTaskRoleName();
-    if (requestManager != null && requestManager.getTaskRoles().get(taskRoleName).getUseTheSamePorts()) {
-      ResourceDescriptor containerResource = ResourceDescriptor.fromResource(container.getResource());
-      List<ValueRange> allocatedPorts = statusManager.getAllocatedTaskPorts(taskStatus.getTaskRoleName());
+    List<ValueRange> allocatedPorts = statusManager.getAllocatedTaskPorts(taskRoleName);
+    List<ValueRange> containerPorts = ResourceDescriptor.fromResource(container.getResource()).getPortRanges();
+
+    Boolean useTheSamePorts = requestManager.getTaskRoles().get(taskRoleName).getUseTheSamePorts();
+    LOGGER.logDebug(" Test Container, TaskRoleName: [%s] UseTheSamePorts: [%s], previous allocated ports: [%s], current allocated ports: [%s]",
+        taskRoleName, useTheSamePorts, allocatedPorts, containerPorts);
+    if (requestManager != null && useTheSamePorts) {
       if (ValueRangeUtils.getValueNumber(allocatedPorts) > 0) {
-        if (ValueRangeUtils.isEqualRangeList(containerResource.getPortRanges(), allocatedPorts)) {
-          LOGGER.logInfo(
-              "[%s]: Container ports are not consistent with previous successfully allocated tasks",
+        if (!ValueRangeUtils.isEqualRangeList(containerPorts, allocatedPorts)) {
+          LOGGER.logWarning(
+              "[%s]: Container ports are not consistent with previous allocated ports",
               containerId);
           return false;
         }
