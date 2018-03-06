@@ -24,6 +24,7 @@ import com.microsoft.frameworklauncher.common.log.DefaultLogger;
 import org.apache.hadoop.yarn.api.records.Resource;
 
 import com.microsoft.frameworklauncher.common.utils.YamlUtils;
+
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.io.Serializable;
@@ -132,7 +133,7 @@ public class ResourceDescriptor implements Serializable {
       this.setPortNumber(0);
     } else if (portNumber > 0 && ValueRangeUtils.getValueNumber(portRangeList) == 0) {
       this.setPortNumber(portNumber);
-    } else if (portNumber > 0 && ValueRangeUtils.getValueNumber(portRangeList) > 0){
+    } else if (portNumber > 0 && ValueRangeUtils.getValueNumber(portRangeList) > 0) {
       throw new BadRequestException("illegal portDefinitions in ResourceDescriptor, any port and specified port are now allowed to coexistence");
     }
   }
@@ -173,7 +174,8 @@ public class ResourceDescriptor implements Serializable {
     return ResourceDescriptor.newInstance(memoryMB, cpuNumber, gpuNumber, gpuAttribute, 0, new ArrayList<ValueRange>());
   }
 
-  public static ResourceDescriptor newInstance(Integer memoryMB, Integer cpuNumber, Integer gpuNumber, Long gpuAttribute, int portNumber, List<ValueRange> portRange) {
+  public static ResourceDescriptor newInstance(Integer memoryMB, Integer cpuNumber, Integer gpuNumber,
+      Long gpuAttribute, int portNumber, List<ValueRange> portRange) {
     ResourceDescriptor resource = new ResourceDescriptor();
     resource.setMemoryMB(memoryMB);
     resource.setCpuNumber(cpuNumber);
@@ -184,21 +186,21 @@ public class ResourceDescriptor implements Serializable {
     return resource;
   }
 
-
   public static ResourceDescriptor fromResource(Resource res) throws Exception {
     ResourceDescriptor rd = new ResourceDescriptor();
     rd.setMemoryMB(res.getMemory());
     rd.setCpuNumber(res.getVirtualCores());
     rd.setGpuAttribute(0L);
     rd.setGpuNumber(0);
+    Class<?> clazz = res.getClass();
 
     try {
-      Class<?> clazz = res.getClass();
+
       Method getGpuNumber = clazz.getMethod("getGPUs");
-      Method getGpuAtrribute = clazz.getMethod("getGPUAttribute");
+      Method getGpuAttribute = clazz.getMethod("getGPUAttribute");
 
       rd.setGpuNumber((int) getGpuNumber.invoke(res));
-      rd.setGpuAttribute((long) getGpuAtrribute.invoke(res));
+      rd.setGpuAttribute((long) getGpuAttribute.invoke(res));
     } catch (NoSuchMethodException e) {
       LOGGER.logDebug(e, "Ignore: Fail get GPU information, YARN library doesn't support gpu as resources");
     } catch (IllegalAccessException e) {
@@ -207,7 +209,6 @@ public class ResourceDescriptor implements Serializable {
 
     try {
 
-      Class<?> clazz = res.getClass();
       Class hadoopValueRangesClass = Class.forName("org.apache.hadoop.yarn.api.records.ValueRanges");
       Class hadoopValueRangeClass = Class.forName("org.apache.hadoop.yarn.api.records.ValueRange");
       Method getPorts = clazz.getMethod("getPorts");
@@ -328,7 +329,6 @@ public class ResourceDescriptor implements Serializable {
     lhs.setPortRanges(ValueRangeUtils.addRange(lhs.getPortRanges(), rhs.getPortRanges()));
     lhs.setPortNumber(ValueRangeUtils.getValueNumber(lhs.getPortRanges()));
   }
-
 
   public static boolean fitsIn(ResourceDescriptor smaller, ResourceDescriptor bigger) {
     return smaller.getMemoryMB() <= bigger.getMemoryMB()
